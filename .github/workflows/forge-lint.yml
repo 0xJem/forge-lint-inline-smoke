@@ -7,6 +7,7 @@ on:
     - cron: "17 6 * * *"
 
 permissions:
+  actions: read
   checks: read
   contents: read
 
@@ -38,8 +39,8 @@ jobs:
           set -euo pipefail
 
           check_run_id="$(
-            gh api "/repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs" \
-              --jq ".check_runs[] | select(.name == env.JOB_NAME) | .id" \
+            gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+              --jq ".jobs[] | select(.name == env.JOB_NAME) | .id" \
               | head -n 1
           )"
 
