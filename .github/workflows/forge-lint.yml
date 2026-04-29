@@ -3,19 +3,72 @@ name: Forge Lint
 on:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * *"
 
 permissions:
+  actions: read
+  checks: read
   contents: read
 
 jobs:
   forge-lint:
-    name: Forge Lint
+    name: Forge Lint (${{ matrix.foundry-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        foundry-version:
+          - v1.5.1
+          - v1.7.0
+          - stable
     steps:
       # actions/checkout v6.0.2
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - uses: 0xJem/forge-lint-inline-action@2558c3a619002cd5857e73d750954f5e2248ee07
         with:
-          foundry-version: stable
+          foundry-version: ${{ matrix.foundry-version }}
           fail-level: none
+
+  require-annotations:
+    name: Require annotations
+    runs-on: ubuntu-latest
+    needs: forge-lint
+    if: always()
+    steps:
+      - name: Require annotations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          failed=0
+          for version in v1.5.1 v1.7.0 stable; do
+            job_name="Forge Lint (${version})"
+            check_run_id="$(
+              gh api "/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs" \
+                --jq ".jobs[] | select(.name == \"${job_name}\") | .id" \
+                | head -n 1
+            )"
+
+            if [ -z "$check_run_id" ]; then
+              echo "::error::Could not find check run for ${job_name}"
+              failed=1
+              continue
+            fi
+
+            annotation_count="$(
+              gh api "/repos/${GITHUB_REPOSITORY}/check-runs/${check_run_id}/annotations" \
+                --jq "length"
+            )"
+
+            if [ "$annotation_count" -eq 0 ]; then
+              echo "::error::Expected at least one Forge lint annotation for ${job_name}"
+              failed=1
+            else
+              echo "Found ${annotation_count} Forge lint annotation(s) for ${job_name}"
+            fi
+          done
+
+          exit "$failed"
