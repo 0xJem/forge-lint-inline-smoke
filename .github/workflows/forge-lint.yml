@@ -18,5 +18,4 @@ jobs:
       - uses: 0xJem/forge-lint-inline-action@2558c3a619002cd5857e73d750954f5e2248ee07
         with:
           foundry-version: stable
-          args: "--only-lint mixed-case-function"
           fail-level: none
