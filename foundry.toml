@@ -3,3 +3,6 @@ src = "src"
 out = "out"
 libs = ["lib"]
 solc_version = "0.8.30"
+
+[lint]
+severity = ["high", "medium", "low", "info", "gas", "code-size"]
